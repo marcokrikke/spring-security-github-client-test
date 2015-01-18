@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:sec="http://www.springframework.org/schema/security" xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:oauth="http://www.springframework.org/schema/security/oauth2"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd http://www.springframework.org/schema/security/oauth2 http://www.springframework.org/schema/security/spring-security-oauth2.xsd">
+    <sec:http use-expressions="true" entry-point-ref="clientAuthenticationEntryPoint"
+              authentication-manager-ref="OAuth2AuthenticationManager">
+        <sec:logout delete-cookies="JSESSIONID" logout-success-url="/" logout-url="${logoutUrl}" />
+
+        <sec:anonymous enabled="false" />
+
+        <sec:intercept-url pattern="/**" access="isFullyAuthenticated()" />
+
+        <!-- OAuth2 client security filter -->
+        <sec:custom-filter ref="oauth2ClientContextFilter" after="EXCEPTION_TRANSLATION_FILTER" />
+
+        <!-- Acquire an OAuth2 access token from GitHub and load an authentication object into the SecurityContext -->
+        <sec:custom-filter ref="oAuth2AuthenticationProcessingFilter" before="FILTER_SECURITY_INTERCEPTOR" />
+    </sec:http>
+
+    <!-- Redirects the user to the authUrl, which is then handled by the oAuth2AuthenticationProcessingFilter -->
+    <bean id="clientAuthenticationEntryPoint"
+          class="org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint">
+        <constructor-arg value="${authUrl}" />
+    </bean>
+
+    <!-- Filter that is used to acquire an OAuth2 access token from GitHub, and load an authentication object into the SecurityContext -->
+    <bean id="oAuth2AuthenticationProcessingFilter"
+          class="org.springframework.security.oauth2.client.filter.OAuth2ClientAuthenticationProcessingFilter">
+        <constructor-arg name="defaultFilterProcessesUrl" value="${authUrl}" />
+        <property name="restTemplate" ref="gitHubRestTemplate" />
+        <property name="tokenServices" ref="tokenServices" />
+    </bean>
+
+    <!-- OAuth2RestTemplate that is able to make OAuth2-authenticated REST requests with the credentials of the githubOAuthResource -->
+    <oauth:rest-template id="gitHubRestTemplate" resource="githubOAuthResource" />
+
+    <!-- Remote GitHub OAuth2 resource -->
+    <oauth:resource id="githubOAuthResource" type="authorization_code" client-id="${github.clientid}"
+                    client-secret="${github.clientsecret}" scope="${github.scope}"
+                    access-token-uri="${github.accessTokenUri}" user-authorization-uri="${github.authorizationUri}"
+                    pre-established-redirect-uri="${github.redirectUri}" use-current-uri="false"
+                    authentication-scheme="header" client-authentication-scheme="query" />
+
+    <!-- Custom service that creates and OAuth2Authentication object based on the accessToken returned by GitHub -->
+    <bean id="tokenServices" class="nl.marcokrikke.security.GitHubClientTokenServices" />
+
+    <!-- Authentication manager -->
+    <bean class="org.springframework.security.oauth2.provider.authentication.OAuth2AuthenticationManager"
+          id="OAuth2AuthenticationManager">
+        <property name="tokenServices" ref="tokenServices" />
+    </bean>
+
+    <!-- Maps GitHub Team ids to roles -->
+    <bean class="org.springframework.security.core.authority.mapping.MapBasedAttributes2GrantedAuthoritiesMapper">
+        <property name="attributes2grantedAuthoritiesMap">
+            <map>
+                <entry key="172173" value="ROLE_ADMIN" />
+            </map>
+        </property>
+    </bean>
+</beans>

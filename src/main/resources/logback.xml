@@ -1,0 +1,19 @@
+<configuration>
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+        </layout>
+    </appender>
+
+    <root level="info">
+        <appender-ref ref="stdout" />
+    </root>
+
+    <logger name="org.springframework.jdbc.datasource.DataSourceUtils" level="info" />
+
+    <logger name="org.springframework.security" level="info" />
+    <logger name="org.springframework.security.access.intercept" level="info" />
+    <logger name="org.springframework.security.web" level="info" />
+
+    <logger name="nl.marcokrikke" level="debug" />
+</configuration>
